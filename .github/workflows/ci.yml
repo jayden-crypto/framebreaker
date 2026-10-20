@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 6 * * *"   # nightly: re-check known bugs against the latest releases
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync
+      - run: uv run pytest -q
+
+  fuzz:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      # nightly runs test the newest releases rather than the lockfile
+      - run: uv sync ${{ github.event_name == 'schedule' && '--upgrade' || '' }}
+      - run: uv run framebreaker --out findings fuzz --seconds 600 --workers 4 --seed ${{ github.run_number }}
+      - run: uv run framebreaker --out findings list || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: findings
+          path: findings/
