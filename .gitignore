@@ -13,3 +13,5 @@ wheels/
 findings*/
 .inflight/
 *.log
+
+.DS_Store
